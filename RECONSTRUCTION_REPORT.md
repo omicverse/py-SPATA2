@@ -19,6 +19,32 @@ AnnData and can later be used in `omicverse.space`:
 - spatial outlier detection and filtering;
 - explicit pixel/physical-unit distance conversion.
 
+## Namespace audit
+
+The SPATA2 3.1.4 `NAMESPACE` currently exports 751 symbols. This repository now
+ships a strict symbol-level audit:
+
+- `NAMESPACE_PARITY.md`
+- `references/spata2_namespace_parity.csv`
+
+Current strict R-name coverage is 16 / 751 exports (2.1%). This is not a full
+port yet. It is an auditable starting point for a rewrite.
+
+## Benchmark
+
+The benchmark fixture contains 6,402 observations x 100 genes and two isolated
+artifact-like coordinates.
+
+| Operation | Seconds |
+|---|---:|
+| `getCoordsDf` | 0.000418 |
+| `getFeatureDf` | 0.001804 |
+| `identifyTissueOutline` | 0.001991 |
+| `identifySpatialOutliers` | 0.010231 |
+| `removeSpatialOutliers` | 0.005265 |
+
+Benchmark outputs are stored in `benchmarks/results/`.
+
 ## Deferred
 
 The following areas are intentionally not reconstructed in this first pass:

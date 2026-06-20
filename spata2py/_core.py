@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -8,6 +9,15 @@ import pandas as pd
 from anndata import AnnData
 from scipy import sparse
 from scipy.spatial import ConvexHull, QhullError, cKDTree
+
+
+@dataclass
+class SpatialData:
+    """Lightweight Python analogue of SPATA2 spatial coordinate content."""
+
+    coords: pd.DataFrame
+    platform: str | None = None
+    unit: str = "px"
 
 
 def _ensure_adata(adata: AnnData) -> AnnData:
@@ -186,6 +196,71 @@ def identify_tissue_outline(
     return outline
 
 
+def get_coords_mtr(
+    adata: AnnData,
+    *,
+    spatial_key: str = "spatial",
+    x: str = "x",
+    y: str = "y",
+) -> np.ndarray:
+    """Return spatial coordinates as an ``n_obs x 2`` NumPy matrix."""
+
+    return _coords_array(adata, spatial_key=spatial_key, x=x, y=y).copy()
+
+
+def get_coords_range(
+    adata: AnnData,
+    *,
+    spatial_key: str = "spatial",
+    x: str = "x",
+    y: str = "y",
+) -> pd.DataFrame:
+    """Return min/max coordinate ranges for x and y."""
+
+    coords = _coords_array(adata, spatial_key=spatial_key, x=x, y=y)
+    return pd.DataFrame(
+        {"min": coords.min(axis=0), "max": coords.max(axis=0)},
+        index=pd.Index([x, y], name="axis"),
+    )
+
+
+def get_coords_center(
+    adata: AnnData,
+    *,
+    spatial_key: str = "spatial",
+    x: str = "x",
+    y: str = "y",
+) -> pd.Series:
+    """Return the centroid of the spatial coordinate cloud."""
+
+    coords = _coords_array(adata, spatial_key=spatial_key, x=x, y=y)
+    return pd.Series(coords.mean(axis=0), index=[x, y], name="center")
+
+
+def get_tissue_outline_df(
+    adata: AnnData,
+    *,
+    key: str = "spata2py_tissue_outline",
+) -> pd.DataFrame:
+    """Return a previously computed tissue outline from ``adata.uns``."""
+
+    _ensure_adata(adata)
+    if key not in adata.uns:
+        raise KeyError(f"No tissue outline found at adata.uns[{key!r}].")
+    return pd.DataFrame(adata.uns[key]).copy()
+
+
+def contains_tissue_outline(
+    adata: AnnData,
+    *,
+    key: str = "spata2py_tissue_outline",
+) -> bool:
+    """Return whether ``adata`` contains a stored tissue outline."""
+
+    _ensure_adata(adata)
+    return key in adata.uns
+
+
 def _robust_threshold(values: np.ndarray, scale: float) -> float:
     median = float(np.median(values))
     mad = float(np.median(np.abs(values - median)))
@@ -240,6 +315,17 @@ def identify_spatial_outliers(
     return series
 
 
+def contains_spatial_outliers(
+    adata: AnnData,
+    *,
+    key: str = "spata2py_spatial_outlier",
+) -> bool:
+    """Return whether ``adata.obs`` contains a spatial-outlier flag."""
+
+    _ensure_adata(adata)
+    return key in adata.obs
+
+
 def remove_spatial_outliers(
     adata: AnnData,
     *,
@@ -289,3 +375,57 @@ def unit_to_pixels(units: Any, pixels_per_unit: float) -> Any:
     if pixels_per_unit <= 0:
         raise ValueError("pixels_per_unit must be positive.")
     return np.asarray(units) * pixels_per_unit
+
+
+def is_outlier(values: Any, *, mad_scale: float = 3.5) -> np.ndarray:
+    """Return robust median-absolute-deviation outlier flags for a numeric vector."""
+
+    arr = np.asarray(values, dtype=float)
+    if arr.ndim != 1:
+        raise ValueError("values must be one-dimensional.")
+    if arr.size == 0:
+        return np.zeros(0, dtype=bool)
+    if not np.isfinite(arr).all():
+        raise ValueError("values must be finite.")
+    threshold = _robust_threshold(arr, mad_scale)
+    lower = float(np.median(arr)) - (threshold - float(np.median(arr)))
+    return (arr > threshold) | (arr < lower)
+
+
+def create_spatial_data(
+    coords: pd.DataFrame | np.ndarray,
+    *,
+    platform: str | None = None,
+    unit: str = "px",
+    x: str = "x",
+    y: str = "y",
+) -> SpatialData:
+    """Create a lightweight spatial data container from coordinates."""
+
+    if isinstance(coords, pd.DataFrame):
+        if x not in coords or y not in coords:
+            raise KeyError(f"coords must contain columns {x!r} and {y!r}.")
+        coords_df = coords.copy()
+    else:
+        arr = np.asarray(coords, dtype=float)
+        if arr.ndim != 2 or arr.shape[1] < 2:
+            raise ValueError("coords array must have shape n_obs x >=2.")
+        coords_df = pd.DataFrame(arr[:, :2], columns=[x, y])
+    return SpatialData(coords=coords_df, platform=platform, unit=unit)
+
+
+# SPATA2 R-style compatibility aliases for the implemented subset.
+getCoordsDf = get_coords_df
+getCoordsMtr = get_coords_mtr
+getCoordsRange = get_coords_range
+getCoordsCenter = get_coords_center
+getFeatureDf = join_with_variables
+identifyTissueOutline = identify_tissue_outline
+getTissueOutlineDf = get_tissue_outline_df
+containsTissueOutline = contains_tissue_outline
+identifySpatialOutliers = identify_spatial_outliers
+removeSpatialOutliers = remove_spatial_outliers
+containsSpatialOutliers = contains_spatial_outliers
+createSpatialData = create_spatial_data
+as_pixel = unit_to_pixels
+as_micrometer = pixels_to_unit

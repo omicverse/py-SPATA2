@@ -83,6 +83,41 @@ def test_unit_conversion_roundtrip():
     np.testing.assert_allclose(pixels, [0.0, 10.0, 25.0])
 
 
+def test_r_style_aliases_cover_coordinate_subset():
+    adata = spata.create_spata2_fixture()
+
+    coords = spata.getCoordsDf(adata)
+    matrix = spata.getCoordsMtr(adata)
+    coord_range = spata.getCoordsRange(adata)
+    center = spata.getCoordsCenter(adata)
+
+    assert coords.loc["spot_0", "x"] == 0.0
+    assert matrix.shape == (adata.n_obs, 2)
+    assert coord_range.loc["x", "max"] == 12.0
+    assert center.index.tolist() == ["x", "y"]
+
+
+def test_r_style_aliases_cover_tissue_and_outlier_subset():
+    adata = spata.create_spata2_fixture()
+
+    spata.identifyTissueOutline(adata)
+    outliers = spata.identifySpatialOutliers(adata, radius=1.6, min_neighbors=2)
+
+    assert spata.containsTissueOutline(adata)
+    assert len(spata.getTissueOutlineDf(adata)) >= 3
+    assert spata.containsSpatialOutliers(adata)
+    assert outliers.loc["spot_5"]
+
+
+def test_create_spatial_data_and_is_outlier_helpers():
+    spatial_data = spata.createSpatialData(np.array([[0.0, 1.0], [2.0, 3.0]]), platform="Visium")
+    outlier_flags = spata.is_outlier([1.0, 1.1, 1.2, 20.0], mad_scale=3.0)
+
+    assert spatial_data.platform == "Visium"
+    assert spatial_data.coords.shape == (2, 2)
+    assert outlier_flags[-1]
+
+
 def test_missing_variable_raises_keyerror():
     adata = spata.create_spata2_fixture()
 

@@ -1,0 +1,48 @@
+{
+  "dataset": {
+    "n_obs": 6402,
+    "n_vars": 100,
+    "coordinate_key": "obsm['spatial']"
+  },
+  "runs": [
+    {
+      "operation": "getCoordsDf",
+      "seconds": 0.0004177000082563609,
+      "result_shape": [
+        6402,
+        3
+      ]
+    },
+    {
+      "operation": "getFeatureDf",
+      "seconds": 0.001803999999538064,
+      "result_shape": [
+        6402,
+        6
+      ]
+    },
+    {
+      "operation": "identifyTissueOutline",
+      "seconds": 0.0019908999965991825,
+      "result_shape": [
+        5,
+        2
+      ]
+    },
+    {
+      "operation": "identifySpatialOutliers",
+      "seconds": 0.010230999992927536,
+      "result_shape": [
+        6402
+      ]
+    },
+    {
+      "operation": "removeSpatialOutliers",
+      "seconds": 0.005264600011287257,
+      "result_shape": [
+        6400,
+        100
+      ]
+    }
+  ]
+}
