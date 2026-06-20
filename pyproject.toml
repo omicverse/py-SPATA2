@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spata2py"
+version = "0.1.0"
+description = "AnnData-native Python reconstruction of selected stable SPATA2 spatial utilities."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "GPL-3.0-or-later" }
+authors = [
+  { name = "SPATA2 Python Reconstruction" }
+]
+keywords = ["spatial transcriptomics", "SPATA2", "AnnData", "coordinates", "tissue outline"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+  "anndata>=0.9",
+  "numpy>=1.23",
+  "pandas>=1.5",
+  "scipy>=1.9",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7",
+]
+
+[project.urls]
+Homepage = "https://github.com/omicverse/py-SPATA2"
+Repository = "https://github.com/omicverse/py-SPATA2"
+Issues = "https://github.com/omicverse/py-SPATA2/issues"
+SPATA2 = "https://themilolab.github.io/SPATA2/index.html"
+
+[tool.setuptools.packages.find]
+include = ["spata2py*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
