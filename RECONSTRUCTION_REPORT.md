@@ -1,5 +1,21 @@
 # SPATA2 Python Reconstruction Report
 
+## Validation and synchronization update (2026-11-10)
+
+The standalone outlier implementation now follows OmicVerse's DBSCAN default: transitive connectivity, automatic radius at 1.25 times median nearest-neighbor distance, and explicit method="mad" compatibility. The MAD helper uses relative tolerance to avoid treating lattice rounding noise as meaningful spread. remove_spatial_outliers forwards method; scikit-learn is an explicit dependency.
+
+examples/real_dlpfc_R_parity.ipynb executes 3,639 retained DLPFC 151673 spots plus five deliberately planted isolated controls. Python flags all five controls and nine native candidates. Those native flags are not established artifacts. R dbscan with identical epsilon and minPts=4 returns exactly the same flags (zero disagreements).
+
+This is a DBSCAN-kernel comparison, not execution of the full SPATA2 S4 pipeline. The single convex outline differs from R's concave, fragmented tissue outlines. Historical 16/751 export-name coverage is not a behavioral-equivalence rate.
+
+validation/ contains inputs, hashes, R versions and the reference runner. tests/test_real_reference.py compares the real coordinates; test_lattice_outliers.py separately covers lattice rounding and a planted control.
+
+```sh
+Rscript validation/run_r_reference.R validation/spata_coords.csv 7.707226277274469 validation/spata_r.csv
+python -m pytest -q
+```
+
+
 Source reference: <https://themilolab.github.io/SPATA2/index.html>
 
 SPATA2 v3 is a broad R toolkit for spatial expression analysis. The pkgdown

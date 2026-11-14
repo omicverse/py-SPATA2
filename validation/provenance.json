@@ -1,0 +1,10 @@
+{
+  "upstream_repository": "https://github.com/theMILOlab/SPATA2",
+  "validation_date": "2026-11-10",
+  "fixtures": {
+    "examples/data/dlpfc_coords.npz": {
+      "sha256": "dec857ef5e8e2f9d36dc299cf6c1870d4f618693e369d23266d0dd9c9e1c824e",
+      "bytes": 45805
+    }
+  }
+}

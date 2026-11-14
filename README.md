@@ -162,5 +162,11 @@ pytest
 Current local gate:
 
 ```text
-12 passed
+15 passed
 ```
+
+## Updated real-data validation
+
+See [measured R comparisons and limitations](RECONSTRUCTION_REPORT.md) and the executed real-data notebook in `examples/`. Synthetic signal tests are not evidence of R equivalence.
+
+Outlier detection defaults to DBSCAN, synchronized with OmicVerse; use `method="mad"` for the older robust-distance rule. Tissue outlines remain convex and are not full SPATA2 equivalents.

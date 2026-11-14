@@ -1,0 +1,17 @@
+{
+  "dataset": "spatialLIBD DLPFC 151673",
+  "spata_spots": 3639,
+  "spata_native_outliers": 9,
+  "spata_planted_outliers": 5,
+  "dbscan_eps": 7.707226277274469,
+  "split_shape": [
+    240,
+    512
+  ],
+  "split_reference": "Within-slice cortical-layer mean profiles; illustrative NNLS weights, not RCTD or cell-type truth",
+  "counts_sha256": "984847b3f9476f12e2d4a2c0a447f7edd3d3a1c83230464d2ad8ed76af2d632b",
+  "spata_native_flags_with_controls": 9,
+  "split_purified_max_absolute_error": 5.115907697472721e-13,
+  "split_reassigned_max_absolute_error": 5.115907697472721e-13,
+  "spata_R_dbscan_flag_disagreements": 0
+}

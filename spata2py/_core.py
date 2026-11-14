@@ -262,12 +262,26 @@ def contains_tissue_outline(
 
 
 def _robust_threshold(values: np.ndarray, scale: float) -> float:
+    """Median + ``scale`` robust deviations, guarding a degenerate spread.
+
+    The guard has to be relative, not ``== 0``. Spots on a Visium slide sit on a
+    regular lattice, so every interior spot has the same k-th neighbour distance
+    and the MAD is zero in exact arithmetic — but in floating point it comes out
+    around 1e-14 rather than exactly 0. An ``== 0`` test never fires, the
+    threshold collapses onto the median, and roughly a quarter of a perfectly
+    healthy slide is flagged as spatially isolated on rounding noise alone
+    (measured: 880 of 3,733 spots on SPATA2's example slide). When the spread is
+    negligible against the scale of the data, nothing is an outlier.
+    """
     median = float(np.median(values))
+    negligible = 1e-9 * max(abs(median), float(np.finfo(float).eps))
+
     mad = float(np.median(np.abs(values - median)))
-    if mad == 0:
+    if mad <= negligible:
         q75, q25 = np.percentile(values, [75, 25])
-        mad = float((q75 - q25) / 1.349) if q75 > q25 else 0.0
-    if mad == 0:
+        iqr = float(q75 - q25)
+        mad = iqr / 1.349 if iqr > negligible else 0.0
+    if mad <= negligible:
         return float(np.max(values))
     return median + scale * 1.4826 * mad
 
@@ -278,17 +292,50 @@ def identify_spatial_outliers(
     spatial_key: str = "spatial",
     x: str = "x",
     y: str = "y",
+    method: str = "dbscan",
     radius: float | None = None,
     min_neighbors: int = 3,
     mad_scale: float = 3.5,
     write_key: str | None = "spata2py_spatial_outlier",
 ) -> pd.Series:
-    """Flag observations that are spatially isolated from the main tissue."""
+    """Flag observations that are spatially isolated from the main tissue.
+
+    ``method='dbscan'`` is the default and is the rule SPATA2 itself applies in
+    ``identifyTissueOutline(method = "obs")``: a spot is isolated when DBSCAN
+    cannot reach it, with ``eps`` at 1.25x the centre-to-centre spot distance
+    (SPATA2's ``recDbscanEps``) unless ``radius`` says otherwise. Density
+    connectivity is transitive, so a spot at the rim of the tissue stays part of
+    the section through its neighbours.
+
+    ``method='mad'`` keeps the older rule — flag a spot whose k-th neighbour is
+    further than ``median + mad_scale`` robust deviations. It is not the default,
+    for two reasons found on real slides rather than reasoned about.
+
+    First, it used to be actively wrong. Spots sit on a regular lattice, so the
+    k-th neighbour distance is identical for every interior spot and the median
+    absolute deviation is zero in exact arithmetic — but 1.4e-14 in floating
+    point, which the old ``if mad == 0`` guard did not catch. The threshold
+    collapsed onto the median and flagged 880 of the 3,733 spots on SPATA2's own
+    slide; ``spata2_remove_outliers`` would have deleted a quarter of an intact
+    section. :func:`_robust_threshold` now compares against a relative
+    tolerance, so that no longer happens.
+
+    Second, even once corrected it has no sensitivity on a lattice: with the
+    spread genuinely degenerate the threshold falls back to the largest observed
+    distance, and nothing can exceed it. Use it for irregularly sampled
+    coordinates, not for array-based platforms.
+
+    See examples/real_dlpfc_R_parity.ipynb for an executed comparison on real
+    retained DLPFC coordinates and explicitly planted controls. This tests the
+    density-based kernel, not full SPATA2 tissue-outline equivalence.
+    """
 
     if min_neighbors < 1:
         raise ValueError("min_neighbors must be >= 1.")
     if radius is not None and radius <= 0:
         raise ValueError("radius must be positive when provided.")
+    if method not in ("dbscan", "mad"):
+        raise ValueError("method must be 'dbscan' or 'mad'.")
 
     coords = _coords_array(adata, spatial_key=spatial_key, x=x, y=y)
     n_obs = coords.shape[0]
@@ -296,6 +343,19 @@ def identify_spatial_outliers(
         outliers = np.zeros(0, dtype=bool)
     elif n_obs <= min_neighbors:
         outliers = np.zeros(n_obs, dtype=bool)
+    elif method == "dbscan":
+        from sklearn.cluster import DBSCAN
+
+        eps = radius
+        if eps is None:
+            # SPATA2's recDbscanEps: 1.25x the centre-to-centre distance
+            nn = cKDTree(coords).query(coords, k=2)[0][:, 1]
+            eps = float(np.median(nn)) * 1.25
+            if eps <= 0:
+                eps = float(np.max(nn)) or 1.0
+        # sklearn counts the point itself, min_neighbors does not
+        labels = DBSCAN(eps=eps, min_samples=min_neighbors + 1).fit_predict(coords)
+        outliers = labels < 0
     else:
         tree = cKDTree(coords)
         if radius is not None:
@@ -336,6 +396,7 @@ def remove_spatial_outliers(
     radius: float | None = None,
     min_neighbors: int = 3,
     mad_scale: float = 3.5,
+    method: str = "dbscan",
     copy: bool = True,
 ) -> AnnData | None:
     """Remove observations flagged as spatial outliers."""
@@ -348,6 +409,7 @@ def remove_spatial_outliers(
             x=x,
             y=y,
             radius=radius,
+            method=method,
             min_neighbors=min_neighbors,
             mad_scale=mad_scale,
             write_key=outlier_key,
